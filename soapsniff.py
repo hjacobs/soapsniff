@@ -89,7 +89,7 @@ class Connection(object):
         self.last_packet_received = 0
 
     def __str__(self):
-        return 'Connection from {0}:{1} to {2}:{3}'.format(self.src[0], self.src[1], self.dst[0], self.dst[1])
+        return 'Connection from %s:%s to %s:%s' % (self.src[0], self.src[1], self.dst[0], self.dst[1])
 
     def append_packet(self, tcp_seq, data):
         self.last_packet_received = time.time()
@@ -148,7 +148,7 @@ class DecoderThread(Thread):
         elif pcapy.DLT_LINUX_SLL == datalink:
             self.decoder = LinuxSLLDecoder()
         else:
-            raise Exception("Datalink type not supported: {0}".format(datalink))
+            raise Exception("Datalink type not supported: %s" % (datalink,))
 
         self.pcap = pcapObj
         self.server_ports = set(server_ports)
@@ -216,9 +216,9 @@ class DecoderThread(Thread):
         try:
             request_path = data[len(method)+1:data.index(' ', len(method)+2)]
         except ValueError:
-            logging.warning('Invalid HTTP request line: {0}'.format(data[:100]))
+            logging.warning('Invalid HTTP request line: %s', data[:100])
             return
-        logging.debug('Received {0} {1}'.format(method, request_path))
+        logging.debug('Received %s %s', method, request_path)
         self.http_request_counter.inc((conn.src[0], conn.dst[0], conn.dst[1], method, request_path))
         self._needs_server_update = True
 
@@ -267,8 +267,8 @@ class DecoderThread(Thread):
         if firstline.startswith('POST /') and ENVELOPE_END_ANCHORED.search(payload):
             try:
                 envelope = xml.etree.ElementTree.fromstring(payload)
-            except ExpatError as e:
-                logging.warning('Could not parse SOAP payload for {0}: {1}'.format(firstline, e))
+            except ExpatError, e:
+                logging.warning('Could not parse SOAP payload for %s: %s', firstline, e)
                 return
             body = envelope.find(NS_SOAP_ENV + 'Body')
             body_child = None
@@ -291,7 +291,7 @@ class DecoderThread(Thread):
             self.server_conn.request("POST", "/counter", json.dumps(post_data))
             response = self.server_conn.getresponse()
             resp = response.read()
-        except Exception as e:
+        except Exception, e:
             logging.exception('Error while posting to server')
             self._init_server_conn()
             
@@ -316,14 +316,14 @@ class DecoderThread(Thread):
 
         try:
             self._handle_tcp_packet(ip, tcp)
-        except Exception as e:
-            logging.exception('Error while processing TCP packet: {0}'.format(tcp)) 
+        except Exception, e:
+            logging.exception('Error while processing TCP packet: %s', tcp)
 
     def _handle_tcp_packet(self, ip, tcp):
         """handle a single TCP/IP packet"""
         self.packet_counter += 1
         if self.packet_counter % 10 == 0:
-            logging.debug('Received {0} packets so far'.format(self.packet_counter))
+            logging.debug('Received %d packets so far', self.packet_counter)
 
         src = (ip.get_ip_src(), tcp.get_th_sport() )
         dst = (ip.get_ip_dst(), tcp.get_th_dport() )
@@ -334,7 +334,7 @@ class DecoderThread(Thread):
 
         conn = self.connections[socket_pair]
             
-        logging.debug('Connections: {0}'.format(len(self.connections)))
+        logging.debug('Connections: %d', len(self.connections))
 
         data = tcp.get_data_as_string()
         conn.append_packet(tcp.get_th_seq(), data)
@@ -461,7 +461,7 @@ if __name__ == '__main__':
                 ports += range(int(range_start_end[0]), int(range_start_end[1])+1)
             else:
                 ports.append(int(range_start_end[0]))
-        ports_filter = ' or '.join(['(port {0})'.format(p) for p in ports])
+        ports_filter = ' or '.join(['(port %s)' % (p,) for p in ports])
         ports_filter = ' and (' + ports_filter + ')'
 
     # we only capture packets which contain data:
@@ -469,7 +469,7 @@ if __name__ == '__main__':
     # (ip[0]&0xf)<<2 : 4-bit IP header length
     # (tcp[12]&0xf0) : TCP header length
     filter = 'tcp ' + ports_filter + ' and (((ip[2:2] - ((ip[0]&0xf)<<2)) - ((tcp[12]&0xf0)>>2)) != 0)'
-    logging.debug("BPF filter: {0}".format(filter))
+    logging.debug("BPF filter: %s", filter)
 
     if options.soap_request_handler:
         parts = options.soap_request_handler.split('.')
