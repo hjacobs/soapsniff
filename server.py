@@ -63,6 +63,19 @@ class DerivativeCounter(object):
         return dv
             
 
+class SOAPCallGrouper(object):
+
+    @classmethod
+    def group(cls, data, by):
+        if by == 'method':
+            keyfunc = lambda k: ' '.join(k.split(' ')[3:5])
+        elif by == 'connection':
+            keyfunc = lambda k: ' '.join(k.split(' ')[:3])
+        result = collections.defaultdict(int)
+        for key, val in data.items():
+            result[keyfunc(key)] += val
+        return result
+
 
 class SimpleHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     def do_GET(self):
@@ -73,15 +86,27 @@ class SimpleHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         if 'pretty' in self.path:
             separators = (',\n', ': ')
         if self.path.startswith('/deque'):
-            json.dump(list(self.server.get_data()), self.wfile, separators=separators)
+            data = list(self.server.get_data())
         elif self.path.startswith('/derivate'):
-            json.dump({
-                'http': self.server.http_request_counter.average_per_sec(),
-                'soap': self.server.soap_call_counter.average_per_sec()}, self.wfile, separators=separators)
+            if 'soap' in self.path:
+                data = self.server.soap_call_counter.average_per_sec()
+                if 'method' in self.path:
+                    data = SOAPCallGrouper.group(data, 'method')
+                elif 'connection' in self.path:
+                    data = SOAPCallGrouper.group(data, 'connection')
+            elif 'http' in self.path:
+                data = self.server.http_request_counter.average_per_sec()
+            else:    
+                data = {
+                    'http': self.server.http_request_counter.average_per_sec(),
+                    'soap': self.server.soap_call_counter.average_per_sec()
+                }
         else:
-            json.dump({
+            data = {
                 'http': self.server.http_request_counter.current(),
-                'soap': self.server.soap_call_counter.current()}, self.wfile, separators=separators)
+                'soap': self.server.soap_call_counter.current()
+            }
+        json.dump(data, self.wfile, separators=separators)
 
     def do_POST(self):
         raw_data = self.rfile.read(int(self.headers['Content-Length']))
