@@ -1,2 +1,3 @@
 soap_handlers.py
 *.swp
+*.pyc

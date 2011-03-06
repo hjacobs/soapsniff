@@ -4,16 +4,56 @@ Statistics server for SOAP/HTTP sniffer.
 Holds request counts.
 """
 
-import os
 import time
 import BaseHTTPServer
 import SocketServer
-import threading
-import sys
 import collections
 import json
 import logging
 from optparse import OptionParser
+
+class DerivativeCounter(object):
+    """calculate derivate (increments/sec) of dictionary counter values"""
+    def __init__(self, maxlen=60):
+        self.maxlen = maxlen
+        self.timestamps = collections.deque([], maxlen)
+        self.values = collections.deque([], maxlen)
+
+    def update(self, _values):
+        self.timestamps.append(time.time())
+        self.values.append(_values)
+    
+    def current(self):
+        """current counter values"""
+        if not self.values:
+            return {}
+        return self.values[-1]
+
+    def average_per_sec(self, timespan=60, update_interval=1):
+        """return dictionary with increments/sec for each key"""
+        if not self.values:
+            return {}
+        now = self.timestamps[-1]
+        if time.time() - now > 2 * update_interval:
+            # last update was too long ago
+            # => we assume that counters did not change 
+            # and we calculate average based on current time
+            now = time.time() - update_interval
+        startidx = 0
+        dt = now - self.timestamps[startidx]
+        while dt > timespan and startidx < len(self.timestamps)-2:
+            startidx += 1
+            dt = now - self.timestamps[startidx]
+        if not dt:
+            # no time difference => we can't compute any derivate
+            return {}
+        dv = self.values[-1].copy()
+        startvalues = self.values[startidx]
+        for key, val in dv.items():
+            dv[key] = (val - startvalues.get(key, 0)) / dt
+        return dv
+            
+
 
 class SimpleHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     def do_GET(self):
@@ -25,8 +65,14 @@ class SimpleHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             separators = (',\n', ': ')
         if self.path.startswith('/deque'):
             json.dump(list(self.server.get_data()), self.wfile, separators=separators)
+        elif self.path.startswith('/derivate'):
+            json.dump({
+                'http': self.server.http_request_counter.average_per_sec(),
+                'soap': self.server.soap_call_counter.average_per_sec()}, self.wfile, separators=separators)
         else:
-            json.dump({'http': self.server.http_request_counter, 'soap': self.server.soap_call_counter}, self.wfile, separators=separators)
+            json.dump({
+                'http': self.server.http_request_counter.current(),
+                'soap': self.server.soap_call_counter.current()}, self.wfile, separators=separators)
 
     def do_POST(self):
         raw_data = self.rfile.read(int(self.headers['Content-Length']))
@@ -47,8 +93,8 @@ class SimpleHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 class myWebServer(SocketServer.ThreadingMixIn,BaseHTTPServer.HTTPServer):
     def init(self):
         self.deque = collections.deque([], 500)
-        self.http_request_counter = {}
-        self.soap_call_counter = {}
+        self.http_request_counter = DerivativeCounter()
+        self.soap_call_counter = DerivativeCounter()
     def append_data(self, data):
         self.deque.append((time.time(), data))
     def get_data(self):

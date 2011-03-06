@@ -15,10 +15,9 @@ from optparse import OptionParser
 from threading import Thread
 
 import pcapy
-from pcapy import findalldevs, open_live
-import impacket
+from pcapy import open_live
 from impacket.ImpactDecoder import EthDecoder, LinuxSLLDecoder
-import httplib, urllib
+import httplib
 import collections
 from operator import itemgetter
 from heapq import nlargest
@@ -290,7 +289,7 @@ class DecoderThread(Thread):
         try:
             self.server_conn.request("POST", "/counter", json.dumps(post_data))
             response = self.server_conn.getresponse()
-            resp = response.read()
+            response.read()
         except Exception, e:
             logging.exception('Error while posting to server')
             self._init_server_conn()
