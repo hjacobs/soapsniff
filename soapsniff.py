@@ -393,16 +393,8 @@ class Watcher:
         except OSError: pass
 
 def default_soap_request_handler(conn, endpoint, headers, payload, body_child):
-    print conn
-    print 'Endpoint:', endpoint
-    print 'Headers:', headers
-    print 'Payload:'
-    print payload
-
     namespace_uri, tag = string.split(body_child.tag[1:], "}", 1)
-    print tag
-    for arg in body_child:
-        print arg.tag, arg.text
+    logging.debug("SOAP %s %s (%s)", endpoint, tag, conn)
 
 def main(dev, server_ports, filter, ws_path, soap_request_handler, server):
     """main function which starts up the decoder thread"""
