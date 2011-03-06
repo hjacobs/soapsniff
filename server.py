@@ -16,12 +16,21 @@ class DerivativeCounter(object):
     """calculate derivate (increments/sec) of dictionary counter values"""
     def __init__(self, maxlen=60):
         self.maxlen = maxlen
+        self.update_interval = 2
         self.timestamps = collections.deque([], maxlen)
         self.values = collections.deque([], maxlen)
 
     def update(self, _values):
-        self.timestamps.append(time.time())
-        self.values.append(_values)
+        now = time.time()
+        if not self.timestamps or now - self.timestamps[-1] > self.update_interval:
+            # push new values into deque
+            cur = self.current().copy()
+            cur.update(_values)
+            self.timestamps.append(now)
+            self.values.append(cur)
+        else:
+            # just update our most recent counter values
+            self.current().update(_values)
     
     def current(self):
         """current counter values"""
@@ -29,16 +38,16 @@ class DerivativeCounter(object):
             return {}
         return self.values[-1]
 
-    def average_per_sec(self, timespan=60, update_interval=1):
+    def average_per_sec(self, timespan=60):
         """return dictionary with increments/sec for each key"""
         if not self.values:
             return {}
         now = self.timestamps[-1]
-        if time.time() - now > 2 * update_interval:
+        if time.time() - now > 2 * self.update_interval:
             # last update was too long ago
             # => we assume that counters did not change 
             # and we calculate average based on current time
-            now = time.time() - update_interval
+            now = time.time() - self.update_interval
         startidx = 0
         dt = now - self.timestamps[startidx]
         while dt > timespan and startidx < len(self.timestamps)-2:
