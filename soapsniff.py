@@ -255,8 +255,8 @@ class DecoderThread(Thread):
             else: 
                 headers.append(line)
                 name, sep, val = line.partition(':')
-                if name.lower() == 'x-forwarded-for' and IPV4_ADDRESS.match(val):
-                    x_forwarded_for = val
+                if name.lower() == 'x-forwarded-for' and IPV4_ADDRESS.match(val.strip()):
+                    x_forwarded_for = val.strip()
             if not line:
                 break
             if 'chunked' in line:
