@@ -68,9 +68,9 @@ class SOAPCallGrouper(object):
     @classmethod
     def group(cls, data, by):
         if by == 'method':
-            keyfunc = lambda k: ' '.join(k.split(' ')[3:5])
+            keyfunc = lambda k: ' '.join(k.split(' ')[4:6])
         elif by == 'connection':
-            keyfunc = lambda k: ' '.join(k.split(' ')[:3])
+            keyfunc = lambda k: ' '.join(k.split(' ')[:4])
         result = collections.defaultdict(int)
         for key, val in data.items():
             result[keyfunc(key)] += val

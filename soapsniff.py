@@ -33,6 +33,7 @@ except ImportError:
 ENVELOPE_END = re.compile('</[a-zA-Z-]+:Envelope>')
 ENVELOPE_END_ANCHORED = re.compile('</[a-zA-Z-]+:Envelope>\s*$')
 NS_SOAP_ENV = '{http://schemas.xmlsoap.org/soap/envelope/}'
+IPV4_ADDRESS = re.compile('^\d+\.\d+\.\d+\.\d+$')
 
 class Counter(dict):
     def __missing__(self, key):
@@ -245,6 +246,7 @@ class DecoderThread(Thread):
         first = True
         firstline = ''
         headers = []
+        x_forwarded_for = '-'
         while True:
             line = fd.readline().strip()
             if first: 
@@ -252,6 +254,9 @@ class DecoderThread(Thread):
                 first = False
             else: 
                 headers.append(line)
+                name, sep, val = line.partition(':')
+                if name.lower() == 'x-forwarded-for' and IPV4_ADDRESS.match(val):
+                    x_forwarded_for = val
             if not line:
                 break
             if 'chunked' in line:
@@ -275,7 +280,7 @@ class DecoderThread(Thread):
                 namespace_uri, method = string.split(child.tag[1:], "}", 1)
                 body_child = child
             endpoint = firstline.split(' ')[1]
-            self.soap_call_counter.inc((conn.src[0], conn.dst[0], conn.dst[1], endpoint, method))
+            self.soap_call_counter.inc((x_forwarded_for, conn.src[0], conn.dst[0], conn.dst[1], endpoint, method))
             self._needs_server_update = True
             self.soap_request_handler(conn, firstline.split(' ')[1], headers, payload, body_child)
         
