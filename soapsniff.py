@@ -184,13 +184,13 @@ class DecoderThread(Thread):
             logging.warning('Invalid HTTP request line: %s', data[:100])
             return
         logging.debug('Received %s %s', method, request_path)
-        self.http_request_counter.inc((
+        self.http_request_counter.update([(
             conn.src[0],
             conn.dst[0],
             conn.dst[1],
             method,
             request_path,
-        ))
+        )])
         self._needs_server_update = True
 
         # SOAP requests must be POST
@@ -251,14 +251,14 @@ class DecoderThread(Thread):
                 namespace_uri, method = string.split(child.tag[1:], '}', 1)
                 body_child = child
             endpoint = firstline.split(' ')[1]
-            self.soap_call_counter.inc((
+            self.soap_call_counter.update([(
                 x_forwarded_for,
                 conn.src[0],
                 conn.dst[0],
                 conn.dst[1],
                 endpoint,
                 method,
-            ))
+            )])
             self._needs_server_update = True
             self.soap_request_handler(conn, firstline.split(' ')[1], headers, payload, body_child)
 
