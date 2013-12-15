@@ -7,15 +7,13 @@ to track call/request statistics and trigger custom handlers.
 Requirements
 ------------
 
-* python 2.6+
+* python 2.7+
 * pcapy
 * impacket
 
 Using Debian/Ubuntu simply do:
 
     sudo apt-get install python-pcapy python-impacket
-
-The sniffer also runs with Python 2.5 if you install the simplejson package.
 
 
 Running

@@ -21,72 +21,17 @@ from pcapy import open_live
 from impacket.ImpactDecoder import EthDecoder, LinuxSLLDecoder
 import httplib
 import collections
-from operator import itemgetter
-from heapq import nlargest
 import re
 import xml.etree.ElementTree
 from xml.parsers.expat import ExpatError
+from collections import Counter
 
-try:
-    import simplejson as json
-except ImportError:
-    import json
+import json
 
 ENVELOPE_END = re.compile('</[a-zA-Z-]+:Envelope>')
 ENVELOPE_END_ANCHORED = re.compile('</[a-zA-Z-]+:Envelope>\s*$')
 NS_SOAP_ENV = '{http://schemas.xmlsoap.org/soap/envelope/}'
 IPV4_ADDRESS = re.compile('^\d+\.\d+\.\d+\.\d+$')
-
-
-class Counter(dict):
-
-    def __missing__(self, key):
-        return 0
-
-    def inc(self, key):
-        self[key] = self.get(key, 0) + 1
-
-    def update(self, iterable=None, **kwds):
-        '''Like dict.update() but add counts instead of replacing them.
-
-        Source can be an iterable, a dictionary, or another Counter instance.
-
-        >>> c = Counter('which')
-        >>> c.update('witch')           # add elements from another iterable
-        >>> d = Counter('watch')
-        >>> c.update(d)                 # add elements from another counter
-        >>> c['h']                      # four 'h' in which, witch, and watch
-        4
-
-        '''
-
-        if iterable is not None:
-            if hasattr(iterable, 'iteritems'):
-                if self:
-                    self_get = self.get
-                    for elem, count in iterable.iteritems():
-                        self[elem] = self_get(elem, 0) + count
-                else:
-                    dict.update(self, iterable)  # fast path when counter is empty
-            else:
-                self_get = self.get
-                for elem in iterable:
-                    self[elem] = self_get(elem, 0) + 1
-        if kwds:
-            self.update(kwds)
-
-    def most_common(self, n=None):
-        '''List the n most common elements and their counts from the most
-        common to the least.  If n is None, then list all element counts.
-
-        >>> Counter('abracadabra').most_common(3)
-        [('a', 5), ('r', 2), ('b', 2)]
-
-        '''
-
-        if n is None:
-            return sorted(self.iteritems(), key=itemgetter(1), reverse=True)
-        return nlargest(n, self.iteritems(), key=itemgetter(1))
 
 
 class Connection(object):
